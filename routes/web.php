@@ -24,4 +24,16 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+Route::get('/catalogo', function () {
+    return Inertia::render('Products');
+})->middleware(['auth', 'verified']);
+
 require __DIR__.'/auth.php';
+
+use App\Http\Controllers\OrderController;
+
+// Línea A: La ruta de compra (Viene de React)
+Route::post('/orders', [OrderController::class, 'store'])->middleware('auth');
+
+// Línea B: La ruta del historial (La que escribes en el navegador)
+Route::get('/my-orders', [OrderController::class, 'index'])->middleware('auth');
