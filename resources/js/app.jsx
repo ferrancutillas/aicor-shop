@@ -5,6 +5,10 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 
+// 1. IMPORTACIÓN DEL CONTEXTO
+// Traemos el CartProvider para que esté disponible en la raíz de la app.
+import { CartProvider } from './Contexts/CartContext';
+
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
@@ -17,7 +21,14 @@ createInertiaApp({
     setup({ el, App, props }) {
         const root = createRoot(el);
 
-        root.render(<App {...props} />);
+        // 2. ENVOLVEMOS LA APLICACIÓN
+        // Metemos <App /> dentro de <CartProvider />. 
+        // De esta forma, cualquier página (Products, MyOrders, etc.) podrá usar el carrito.
+        root.render(
+            <CartProvider>
+                <App {...props} />
+            </CartProvider>
+        );
     },
     progress: {
         color: '#4B5563',
