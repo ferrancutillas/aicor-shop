@@ -1,5 +1,11 @@
 <?php
 
+/*
+    ARCHIVO: app/Http/Controllers/OrderController.php
+    ROL: Motor de Procesamiento de Pedidos (Backend).
+    DESCRIPCIÓN: Gestiona la lógica de negocio para la creación de órdenes, validación de stock, cálculos financieros de seguridad y recuperación del historial de compras.
+ */
+
 namespace App\Http\Controllers;
 
 use App\Models\Order;
@@ -10,52 +16,77 @@ use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
+    /*
+        PROCESAMIENTO DE COMPRA (Checkout)
+        Este método recibe el carrito desde React y realiza una serie de validaciones
+        críticas antes de persistir la compra en la base de datos.
+    */
     public function store(Request $request)
     {
-        // 1. VALIDACIÓN DE FORMATO
+        /*
+            1. VALIDACIÓN DE ENTRADA
+            Asegura que el carrito enviado contenga datos válidos y que los productos
+            existan realmente en la base de datos antes de empezar el proceso.
+        */
         $validated = $request->validate([
-            'cart' => 'required|array|min:1',
+            'cart' => 'required|array',
             'cart.*.id' => 'required|exists:products,id',
             'cart.*.quantity' => 'required|integer|min:1',
         ]);
 
+        // Recuperación del usuario autenticado mediante el Token JWT
+        $user = auth()->user(); 
         $cart = $validated['cart'];
 
-        // 2. INICIO DE TRANSACCIÓN (Todo o nada)
+        /*
+            2. TRANSACCIÓN DE BASE DE DATOS
+            Iniciamos un bloque 'transaction' para garantizar la integridad de los datos.
+            Si algo falla durante el proceso, se deshacen todos los cambios (rollback).
+        */
         try {
-            return DB::transaction(function () use ($cart) {
+            return DB::transaction(function () use ($cart, $user) {
                 $serverTotal = 0;
                 $itemsParaGuardar = [];
 
-                // 3. PRIMER BUCLE: Comprobar Stock y Calcular Precio Real
+                /*
+                    3. VALIDACIÓN DE STOCK Y CÁLCULO DE PRECIO REAL
+                    No confiamos en el precio que envía el frontend. Consultamos la DB directamente.
+                    'lockForUpdate' bloquea el registro del producto para evitar compras simultáneas 
+                    que agoten el stock erróneamente.
+                */
                 foreach ($cart as $item) {
-                    // lockForUpdate evita que otro proceso toque el producto mientras calculamos
                     $product = Product::lockForUpdate()->find($item['id']);
 
-                    // VALIDACIÓN DE STOCK REAL
+                    // Comprobación de disponibilidad física
                     if ($product->stock < $item['quantity']) {
                         throw new \Exception("Stock insuficiente para: {$product->name}");
                     }
 
-                    // Calculamos el total nosotros mismos (Seguridad total)
+                    // Cálculo del total basado exclusivamente en precios del servidor (Seguridad)
                     $serverTotal += ($product->price * $item['quantity']);
 
-                    // Guardamos los datos listos para insertar después
+                    // Estructura temporal para la inserción masiva posterior
                     $itemsParaGuardar[] = [
                         'product' => $product,
                         'quantity' => $item['quantity'],
-                        'price' => $product->price // Precio actual de la DB
+                        'price' => $product->price 
                     ];
                 }
 
-                // 4. CREAR EL PEDIDO (Con el total calculado por nosotros)
+                /*
+                    4. CREACIÓN DE LA CABECERA DEL PEDIDO
+                    Registramos la orden principal asociada al usuario con el total final.
+                */
                 $order = Order::create([
-                    'user_id' => auth()->id(),
+                    'user_id' => $user->id,
                     'total_price' => $serverTotal,
                     'status' => 'completed',
                 ]);
 
-                // 5. SEGUNDO BUCLE: Guardar líneas de pedido y restar stock
+                /*
+                    5. REGISTRO DE DETALLES Y ACTUALIZACIÓN DE INVENTARIO
+                    Insertamos cada línea del pedido y restamos las unidades del stock del producto.
+                */
                 foreach ($itemsParaGuardar as $data) {
                     OrderItem::create([
                         'order_id' => $order->id,
@@ -64,10 +95,11 @@ class OrderController extends Controller
                         'price' => $data['price'],
                     ]);
 
-                    // Restamos el stock al modelo que ya tenemos bloqueado
+                    // Actualización del stock remanente
                     $data['product']->decrement('stock', $data['quantity']);
                 }
 
+                // Respuesta de éxito con los datos del pedido generado
                 return response()->json([
                     'message' => '¡Compra segura realizada con éxito!',
                     'order_id' => $order->id,
@@ -75,11 +107,20 @@ class OrderController extends Controller
                 ]);
             });
         } catch (\Exception $e) {
-            // Si algo falla (como el stock), devolvemos el error al usuario
+            /*
+                GESTIÓN DE ERRORES
+                Si ocurre una excepción (ej. falta de stock), retornamos el mensaje al frontend
+                con un código de estado 422 (Unprocessable Entity).
+            */
             return response()->json(['error' => $e->getMessage()], 422);
         }
     }
 
+    /*
+        RECUPERACIÓN DEL HISTORIAL DE PEDIDOS
+        Devuelve todas las compras del usuario logueado, cargando mediante 'Eager Loading'
+        los artículos y los datos de los productos para optimizar la consulta.
+    */
     public function index()
     {
         return Order::where('user_id', auth()->id())

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;    // Importamos el modelo para poder usarlo
+use Illuminate\Http\Request;
 use App\Models\Product;
 
 class ProductController extends Controller

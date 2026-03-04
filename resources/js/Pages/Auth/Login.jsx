@@ -94,7 +94,25 @@ export default function Login({ status, canResetPassword }) {
                         Log in
                     </PrimaryButton>
                 </div>
+
+                {/* Botón de Google */}
+                <div className="flex items-center justify-center mt-4">
+                    <a
+                        href="/auth/google"
+                        className="w-full flex justify-center items-center gap-2 bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-50 transition duration-150 shadow-sm"
+                    >
+                        {/* Un pequeño icono de Google (opcional, pero queda pro) */}
+                        <img 
+                            src="https://www.svgrepo.com/show/355037/google.svg" 
+                            alt="Google" 
+                            className="w-5 h-5"
+                        />
+                        Entrar con Google
+                    </a>
+                </div>
             </form>
         </GuestLayout>
     );
 }
+
+
