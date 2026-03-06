@@ -96,10 +96,21 @@ export default function Products() {
             setCart([]); // Limpieza del estado global tras finalizar la compra
         })
         .catch(error => {
-            if (error.response?.status === 401) {
-                alert("Sesión expirada. Por favor, identifícate de nuevo.");
+            // 1. Extraemos la información del error que viene de Laravel
+            const status = error.response?.status;
+            const mensajeServidor = error.response?.data?.error || error.response?.data?.message;
+
+            console.error("Detalles del error:", error.response?.data); // Para verlo técnico en la consola (F12)
+
+            if (status === 401) {
+                alert("🚨 SESIÓN INVÁLIDA: El token JWT no existe o ha expirado. Reidentifícate.");
+            } else if (status === 422) {
+                // Aquí es donde Laravel te dirá "Stock insuficiente para X" o "El ID no existe"
+                alert("⚠️ ERROR DE VALIDACIÓN: " + mensajeServidor);
+            } else if (status === 500) {
+                alert("🔥 ERROR DEL SERVIDOR: Hay un fallo en el código PHP. Revisa los logs.");
             } else {
-                alert("Error al procesar la compra. Verifica el stock.");
+                alert("❓ ERROR DESCONOCIDO: " + (mensajeServidor || "No se pudo conectar con el servidor"));
             }
         });
     };

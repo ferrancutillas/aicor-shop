@@ -41,7 +41,9 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        // Intentar login con el guard 'web' (sesiones/cookies)
+        // Auth::guard('web') es explícito para dejar claro que usamos sesiones
+        if (! Auth::guard('web')->attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

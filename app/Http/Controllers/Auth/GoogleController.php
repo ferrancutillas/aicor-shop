@@ -2,24 +2,31 @@
 
 /*
     ARCHIVO: app/Http/Controllers/Auth/GoogleController.php
-    ROL: Gestor de Autenticación Social (OAuth 2.0).
-    DESCRIPCIÓN: Administra el flujo de inicio de sesión con Google, la creación de usuarios automáticos en la base de datos y la generación del Token JWT para la sesión de React.
- */
+    ROL: Gestor de Autenticación Social (OAuth 2.0 con Google).
+    DESCRIPCIÓN: 
+      - Redirige al usuario a Google para que inicie sesión.
+      - Recibe la respuesta de Google con los datos del usuario.
+      - Crea el usuario en la base de datos si no existía.
+      - Inicia la sesión web (cookies) para que Inertia funcione.
+      - Genera un token JWT para que React lo use en las llamadas a la API.
+*/
 
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
+use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Auth;
 use Exception;
 
 class GoogleController extends Controller
 {
     /*
-        1. REDIRECCIÓN A GOOGLE
-        Envía al usuario a la página oficial de Google para que introduzca sus credenciales.
-        Utiliza el driver de Socialite configurado en 'config/services.php'.
+        PASO 1: REDIRECCIÓN A GOOGLE
+        Envía al usuario a la página de login de Google.
+        Socialite se encarga de construir la URL con los scopes y credenciales
+        que están definidos en config/services.php.
     */
     public function redirectToGoogle()
     {
@@ -27,49 +34,58 @@ class GoogleController extends Controller
     }
 
     /*
-        2. GESTIÓN DE LA RESPUESTA (Callback)
-        Recibe los datos del usuario desde Google tras una autenticación exitosa.
-        Se encarga de identificar al usuario en nuestro sistema o registrarlo si es nuevo.
+        PASO 2: CALLBACK — Google nos devuelve aquí tras el login exitoso
+        Aquí recibimos los datos del usuario (nombre, email, id de Google).
     */
     public function handleGoogleCallback()
     {
         try {
-            // Recuperación de los datos proporcionados por Google
+            // Pedir a Google los datos del usuario autenticado
             $googleUser = Socialite::driver('google')->user();
-            
-            // Búsqueda del usuario en nuestra base de datos local por correo electrónico
-            $user = User::where('email', $googleUser->email)->first();
+
+            // Buscar si ya existe un usuario con ese email en nuestra base de datos
+            $user = User::where('email', $googleUser->getEmail())->first();
 
             /*
-                3. REGISTRO AUTOMÁTICO
-                Si el usuario no existe en nuestra base de datos, lo creamos en el momento.
-                Le asignamos una contraseña provisional técnica para cumplir con los requisitos del modelo.
+                PASO 3: REGISTRO AUTOMÁTICO
+                Si el usuario no existe, lo creamos con los datos de Google.
+                La contraseña es aleatoria porque no la necesita (entra por Google).
             */
             if (!$user) {
                 $user = User::create([
-                    'name' => $googleUser->name,
-                    'email' => $googleUser->email,
-                    'google_id' => $googleUser->id,
-                    'password' => bcrypt('password-provisional-123'),
+                    'name'      => $googleUser->getName(),
+                    'email'     => $googleUser->getEmail(),
+                    'google_id' => $googleUser->getId(),
+                    'password'  => bcrypt(str()->random(16)),
                 ]);
             }
 
             /*
-                4. GENERACIÓN DEL TOKEN JWT
-                Mediante el guardia de autenticación 'api', logueamos al usuario y 
-                generamos el token firmado que servirá como llave maestra en el frontend.
+                PASO 4: INICIAR SESIÓN WEB (guard 'web' = cookies/sesión)
+                Esto es FUNDAMENTAL. Sin esto, Inertia no sabe quién es el usuario
+                y redirige al login en cada página.
+                Auth::login() crea la cookie de sesión en el navegador.
             */
-            $token = auth()->login($user);
+            Auth::guard('web')->login($user);
 
             /*
-                5. ENTREGA DEL TOKEN AL FRONTEND
-                Redirigimos al componente 'Products.jsx' inyectando el token en la URL.
-                React capturará este parámetro y lo almacenará de forma persistente.
+                PASO 5: GENERAR TOKEN JWT (guard 'api')
+                Este token se usa SOLO para las llamadas a la API (/api/user, 
+                /api/orders, etc.) que React hace con axios.
+                Lo pasamos por la URL para que el frontend lo capture y lo guarde
+                en localStorage.
             */
-            return redirect()->to('/catalogo?token=' . $token);
+            $token = JWTAuth::fromUser($user);
+
+            /*
+                PASO 6: REDIRIGIR AL CATÁLOGO CON EL TOKEN EN LA URL
+                El componente Products.jsx capturará el '?token=xxx' de la URL,
+                lo guardará en localStorage y limpiará la URL.
+            */
+            return redirect()->intended("/catalogo?token={$token}");
 
         } catch (Exception $e) {
-            // En caso de fallo en la comunicación con Google, devolvemos al usuario al Login
+            // Si falla la comunicación con Google, volvemos al login con un mensaje
             return redirect('/login')->with('error', 'Error en la autenticación con Google');
         }
     }

@@ -13,8 +13,14 @@ return [
     |
     */
 
+    /*
+        GUARD POR DEFECTO
+        Usamos 'web' (sesiones) como guard principal porque Inertia/React
+        necesita que el servidor recuerde al usuario entre peticiones vía cookies.
+        El guard 'api' (JWT) se usa solo en las rutas de api.php con 'auth:api'.
+    */
     'defaults' => [
-        'guard' => env('AUTH_GUARD', 'api'),
+        'guard' => env('AUTH_GUARD', 'web'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
@@ -36,17 +42,16 @@ return [
     */
 
     'guards' => [
-        'web' => [
-            'driver' => 'session',
-            'provider' => 'users',
-        ],
-
-        // AÑADE ESTO:
-        'api' => [
-            'driver' => 'jwt',
-            'provider' => 'users',
-        ],
+    'web' => [
+        'driver' => 'session',
+        'provider' => 'users',
     ],
+
+    'api' => [
+        'driver' => 'jwt',
+        'provider' => 'users',
+    ],
+],
 
     /*
     |--------------------------------------------------------------------------
