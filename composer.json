@@ -15,7 +15,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^2.10.1",
-        "php-open-source-saver/jwt-auth": "^2.8",
+        "php-open-source-saver/jwt-auth": "^2.9",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

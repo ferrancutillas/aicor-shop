@@ -8,7 +8,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, usePage, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function AuthenticatedLayout({ header, children, user: propsUser }) {
@@ -23,6 +23,17 @@ export default function AuthenticatedLayout({ header, children, user: propsUser 
     const user = propsUser || pageUser || { name: 'Invitado', email: '' };
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
+
+    /*
+        FUNCIÓN DE CIERRE DE SESIÓN
+        Borra el token JWT del navegador y envía la petición POST de logout al servidor.
+        Si no borramos el token aquí, quedaría guardado incluso después de cerrar sesión.
+    */
+    const handleLogout = (e) => {
+        e.preventDefault();
+        localStorage.removeItem('auth_token');
+        router.post(route('logout'));
+    };
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -104,6 +115,7 @@ export default function AuthenticatedLayout({ header, children, user: propsUser 
                                             href={route('logout')}
                                             method="post"
                                             as="button"
+                                            onClick={handleLogout}
                                         >
                                             Cerrar Sesión
                                         </Dropdown.Link>
@@ -161,7 +173,7 @@ export default function AuthenticatedLayout({ header, children, user: propsUser 
 
                         <div className="mt-3 space-y-1">
                             <ResponsiveNavLink href={route('profile.edit')}>Perfil</ResponsiveNavLink>
-                            <ResponsiveNavLink method="post" href={route('logout')} as="button">
+                            <ResponsiveNavLink method="post" href={route('logout')} as="button" onClick={handleLogout}>
                                 Cerrar Sesión
                             </ResponsiveNavLink>
                         </div>

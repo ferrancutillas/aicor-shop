@@ -13,7 +13,7 @@ class ProductSeeder extends Seeder
      */
     public function run(): void
     {
-        // Definimos la "Lista de la Compra" (El Array)
+        // Definimos el array de productos
         $products = [
             [
                 'name' => 'Camiseta AICOR Edition',
@@ -57,7 +57,7 @@ class ProductSeeder extends Seeder
         ];
 
 
-        // Recorre la lista y por cada 'vuelta', crea un producto en la BD
+        // Recorre el array y por cada iteración crea un registro
         foreach ($products as $product) {
             Product::create($product);
         }

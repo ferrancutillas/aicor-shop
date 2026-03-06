@@ -1,0 +1,11 @@
+[90m= [39m[34;4mApp\Models\Product[39;24m {#6185
+    [34mid[39m: [35m1[39m,
+    [34mname[39m: "[32mCamiseta AICOR Edition[39m",
+    [34mdescription[39m: "[32mCamiseta de algodón 100% con el logo del proyecto.[39m",
+    [34mprice[39m: "[32m19.99[39m",
+    [34mimage[39m: "[32mhttps://picsum.photos/seed/shirt/400/300[39m",
+    [34mstock[39m: [35m50[39m,
+    [34mcreated_at[39m: "[32m2026-03-06 08:12:24[39m",
+    [34mupdated_at[39m: "[32m2026-03-06 08:12:24[39m",
+  }
+

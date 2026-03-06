@@ -30,16 +30,18 @@ export default function MyOrders() {
     useEffect(() => {
         const token = localStorage.getItem('auth_token');
         
-        // Redirección de seguridad si no hay token persistido
+        // Si no hay token JWT, no podemos llamar a la API protegida
+        // pero la sesión web sigue activa (el middleware 'auth' de web.php ya protege esta ruta)
         if (!token) { 
-            window.location.href = '/login'; 
+            console.warn("No hay token JWT en localStorage. Las llamadas API no funcionarán.");
+            setCargando(false);
             return; 
         }
 
         // Configuración de cabeceras de autorización para las peticiones API
         const headers = { Authorization: `Bearer ${token}` };
 
-        // Petición A: Validar identidad del usuario
+        // Petición A: Validar identidad del usuario para mostrar su nombre en el Layout
         axios.get('/api/user', { headers })
             .then(res => setUsuario(res.data))
             .catch(() => console.error("Error al cargar usuario"));
